@@ -1,9 +1,12 @@
 #include <M5Stack.h>
-#include <WiFi.h>
+#include <WiFiEsp.h>
 #include "AudioFileSourceSD.h"
 #include "AudioFileSourceID3.h"
 #include "AudioGeneratorMP3.h"
 #include "AudioOutputI2S.h"
+
+void drawCover();
+void drawSpectrum(int a, int b, int c, int d);
 
 struct Track
 {
@@ -78,6 +81,19 @@ String parseString(int idSeparator, char separator, String str) { // like a spli
   return output;
 }
 
+void io_mux_init(void)
+{
+  // Kendryte K210 Dock:
+  fpioa_set_function(I2S_DA, FUNC_I2S0_OUT_D1);
+	fpioa_set_function(I2S_WS, FUNC_I2S0_WS);	
+  fpioa_set_function(I2S_BCK, FUNC_I2S0_SCLK);
+
+  // for NewMaixGo
+  fpioa_set_function(32, FUNC_GPIO1);
+  gpio_set_drive_mode(1, GPIO_DM_OUTPUT);
+  gpio_set_pin(1, GPIO_PV_HIGH);
+}
+
 bool createTrackList(String dir) {
   int i = 0;
   File root = SD.open(strToChar(dir));
@@ -85,12 +101,13 @@ bool createTrackList(String dir) {
   {
     while (true)
     {
-      File entry =  root.openNextFile();
+//      File entry =  root.openNextFile();
+      File entry =  root.openNextFile(O_RDONLY);
       if (!entry) break;
       if (!entry.isDirectory())
       {
         String ext = parseString(cntChar(entry.name(), '.'), '.', entry.name());
-        if (ext == "mp3") 
+        if (ext == "mp3" || ext == "MP3") 
         {
           i++;
           Track *tmp = new Track;
@@ -127,6 +144,7 @@ bool createTrackList(String dir) {
 }
 
 bool play(char dir) {
+Serial.println("1");
   switch (dir)
   {
     case 'r':
@@ -252,7 +270,9 @@ void drawTrackList() {
     M5.Lcd.setTextSize(2);
     M5.Lcd.setTextColor(0x7bef);
     M5.Lcd.setCursor(10, 130);
-    String label = ((trackList->left)->label).substring(1, posChar(((trackList->left)->label), '.'));
+//TODO
+//    String label = ((trackList->left)->label).substring(1, posChar(((trackList->left)->label), '.'));
+    String label = ((trackList->left)->label).substring(0, posChar(((trackList->left)->label), '.'));
     if (((trackList->left)->label).length() > 24) label = label.substring(0, 24) + ".";
     M5.Lcd.print(label);
   }
@@ -260,7 +280,8 @@ void drawTrackList() {
   M5.Lcd.setTextSize(3); 
   M5.Lcd.setTextColor(0x0000);
   M5.Lcd.setCursor(10, 155);
-  String label = (trackList->label).substring(1, posChar((trackList->label), '.'));
+//  String label = (trackList->label).substring(1, posChar((trackList->label), '.'));
+  String label = (trackList->label).substring(0, posChar((trackList->label), '.'));
   if ((trackList->label).length() > 16) label = label.substring(0, 16) + ".";
   M5.Lcd.print(label);
 
@@ -269,7 +290,8 @@ void drawTrackList() {
     M5.Lcd.setTextSize(2);
     M5.Lcd.setTextColor(0x7bef);
     M5.Lcd.setCursor(10, 185);
-    String label = ((trackList->right)->label).substring(1, posChar(((trackList->right)->label), '.'));
+//    String label = ((trackList->right)->label).substring(1, posChar(((trackList->right)->label), '.'));
+    String label = ((trackList->right)->label).substring(0, posChar(((trackList->right)->label), '.'));
     if (((trackList->right)->label).length() > 24) label = label.substring(0, 24) + ".";
     M5.Lcd.print(label);
   }
@@ -294,7 +316,8 @@ void drawGUI() {
 
 void setup(){
   M5.begin();
-  WiFi.mode(WIFI_OFF);
+//  io_mux_init();
+//  WiFiEsp.mode(WIFI_OFF);
   M5.Lcd.fillRoundRect(0, 0, 320, 240, 7, 0xffff);
   M5.Lcd.setTextColor(0x7bef);
   M5.Lcd.setTextSize(2);
